@@ -1,6 +1,10 @@
+import java.util.*;
+
 public class Vertex {
     final private String id;
     final private String name;
+    private Vertex previous;
+    private List<Pair<Vertex, Integer>> previousNodes;
 
 
     public Vertex(String id, String name) {
@@ -13,6 +17,34 @@ public class Vertex {
 
     public String getName() {
         return name;
+    }
+
+    public Vertex getPrevious() {
+        return previous;
+    }
+
+    public void setPrevious(Vertex previous) {
+        this.previous = previous;
+    }
+
+    public void setPreviousNodes(List<Pair<Vertex, Integer>> previousNodes) {
+        Collections.sort(previousNodes, new Comparator<Pair<Vertex, Integer>>() {
+            @Override
+            public int compare(final Pair<Vertex, Integer> o1, final Pair<Vertex, Integer> o2) {
+                if(o1.getWeight() < o2.getWeight())
+                    return -1;
+                else if(o1.getWeight() == o2.getWeight())
+                    return 0;
+                else
+                    return 1;
+            }
+        });
+        this.previousNodes = previousNodes;
+
+    }
+
+    public List<Pair<Vertex, Integer>> getPreviousNodes() {
+        return previousNodes;
     }
 
     @Override
@@ -46,3 +78,5 @@ public class Vertex {
     }
 
 }
+
+

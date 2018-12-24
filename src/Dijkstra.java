@@ -1,11 +1,4 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class Dijkstra {
 
@@ -28,36 +21,76 @@ public class Dijkstra {
         settledNodes = new HashSet<Vertex>();
         unSettledNodes = new HashSet<Vertex>();
         distance = new HashMap<Vertex, Integer>();
-        predecessors = new HashMap<Vertex, Vertex>();
+        //predecessors = new HashMap<Vertex, Vertex>();
 
         distance.put(source, 0);
         unSettledNodes.add(source);
 
+        List<Pair<Vertex, Integer>> prev = null;
+
         while (unSettledNodes.size() > 0) {
+
             Vertex node = getMinimum(unSettledNodes);
+
             settledNodes.add(node);
             unSettledNodes.remove(node);
-            findMinimalDistances(node);
+
+            findMinimalDistances(node, prev);
+
         }
     }
 
-    private void findMinimalDistances(Vertex node) {
+    /*
+    public Vertex getFirst(Set<Vertex> nodes) {
+
+        for(Vertex n : nodes) {
+            return n;
+        }
+
+        return null;
+    }*/
+
+    private void findMinimalDistances(Vertex node, List<Pair<Vertex, Integer>> prev) {
         List<Vertex> adjacentNodes = getNeighbors(node);
 
         for (Vertex target : adjacentNodes) {
 
-            if (getShortestDistance(target) > getShortestDistance(node)
-                    + getDistance(node, target)) {
+            prev = target.getPreviousNodes();
 
-                distance.put(target, getShortestDistance(node)
-                        + getDistance(node, target));
-                predecessors.put(target, node);
+            if (getShortestDistance(target) > getShortestDistance(node) + getDistance(node, target)) {
+
+                distance.put(target, getShortestDistance(node) + getDistance(node, target));
+
+                target.setPrevious(node);
+                if(prev == null){
+                    prev = new ArrayList<>();
+                }
+                Pair<Vertex, Integer> newPrev = new Pair<>(node, getShortestDistance(node) + getDistance(node, target));
+                prev.add(newPrev);
+                target.setPreviousNodes(prev);
+
                 unSettledNodes.add(target);
 
+            }
+            else if(getShortestDistance(target) == getShortestDistance(node) + getDistance(node, target)) {
+
+                if(prev != null) {
+
+                    Pair<Vertex, Integer> newPrev = new Pair<>(node, getShortestDistance(node) + getDistance(node, target));
+                    prev.add(newPrev);
+                }
+                else {
+
+                    Pair<Vertex, Integer> newPrev = new Pair<>(node, getShortestDistance(node) + getDistance(node, target));
+                    prev.add(newPrev);
+                    target.setPreviousNodes(prev);
+
+                }
             }
         }
 
     }
+
 
     private int getDistance(Vertex node, Vertex target) {
         for (Edge edge : edges) {
@@ -116,26 +149,69 @@ public class Dijkstra {
         }
     }
 
-    /*
+
+    /**
      * This method returns the path from the source to the selected target and
      * NULL if no path exists
      */
-    public LinkedList<Vertex> getPath(Vertex target) {
-        LinkedList<Vertex> path = new LinkedList<Vertex>();
-        Vertex step = target;
-        // check if a path exists
-        if (predecessors.get(step) == null) {
-            return null;
-        }
-        path.add(step);
-        while (predecessors.get(step) != null) {
-            step = predecessors.get(step);
-            path.add(step);
-        }
-        // Put it into the correct order
+    public List<Vertex> getShortestPath(Vertex target) {
+        List<Vertex> path = new ArrayList<Vertex>();
+        for (Vertex vertex = target; vertex != null; vertex = vertex.getPrevious())
+            path.add(vertex);
+
+
         Collections.reverse(path);
         return path;
     }
+
+    /**
+     * Get All paths
+     * @param target
+     * @return
+     */
+    public Set<PairPaths<List<Vertex>, Integer>> getAllShortestPathsTo(Vertex target) {
+        Set<PairPaths<List<Vertex>, Integer>> allShortestPaths = new HashSet<PairPaths<List<Vertex>, Integer>>();
+
+        getShortestPath(new PairPaths<List<Vertex>, Integer>(new ArrayList<Vertex>(), 0), new Pair<Vertex,Integer>(target,0), allShortestPaths);
+
+        return allShortestPaths;
+    }
+
+    /**
+     * Recursive function to get all the paths
+     * @param shortestPath
+     * @param target
+     * @param allShortestPaths
+     * @return
+     */
+    private PairPaths<List<Vertex>, Integer> getShortestPath(PairPaths<List<Vertex>, Integer> shortestPath, Pair<Vertex, Integer> target, Set<PairPaths<List<Vertex>, Integer>> allShortestPaths) {
+        //System.out.println("TARGET: " + target.toString() + " PREV: " + target.getVertex().getPreviousNodes() + " FF: " + shortestPath.getVertexes().toString());
+        List<Pair<Vertex, Integer>> prev = target.getVertex().getPreviousNodes();
+
+        if (prev == null) {
+            shortestPath.addVertexes(target.getVertex());
+
+            Collections.reverse(shortestPath.getVertexes());
+            allShortestPaths.add(shortestPath);
+
+        } else {
+            PairPaths<List<Vertex>, Integer>updatedPath = new PairPaths<>((ArrayList<Vertex>) ((ArrayList<Vertex>) shortestPath.getVertexes()).clone(), shortestPath.getWeight());
+            updatedPath.addVertexes(target.getVertex());
+            //TODO: PROBLEM WITH THE TOTAL CALCULATION OF THE WEIGHT
+            //System.out.println("WEIGHT: " + target.getWeight());
+            if(updatedPath.getWeight() < target.getWeight()) {
+                updatedPath.setWeight(target.getWeight());
+            }
+
+            for (Iterator<Pair<Vertex, Integer>> iterator = prev.iterator(); iterator.hasNext();) {
+
+                Pair<Vertex, Integer> vertex = iterator.next();
+                getShortestPath(updatedPath, vertex, allShortestPaths);
+            }
+        }
+        return shortestPath;
+    }
+
 
     private static void addLane(String laneId, int sourceLocNo, int destLocNo,
                          int duration, List<Edge> edges, List<Vertex> nodes) {
@@ -172,30 +248,39 @@ public class Dijkstra {
         Dijkstra dijkstra = new Dijkstra(graph);
 
         dijkstra.execute(nodes.get(0));
-        LinkedList<Vertex> path = dijkstra.getPath(nodes.get(10));
+        Set<PairPaths<List<Vertex>, Integer>> paths = dijkstra.getAllShortestPathsTo(nodes.get(10));
+
 
         System.out.println("AFTER");
-        for (Vertex vertex : path) {
-            System.out.println(vertex);
+        Iterator<PairPaths<List<Vertex>, Integer>> it = paths.iterator();
+        while(it.hasNext()){
+
+            PairPaths<List<Vertex>, Integer> next = it.next();
+            System.out.println("HERE");
+
+            System.out.println("Nodes: " + next.getVertexes());
+            System.out.println("Total weight: " + next.getWeight());
+
         }
 
-        LinkedList<Vertex> path2 = dijkstra.getPath(nodes.get(2));
+
+        /*LinkedList<Vertex> path2 = dijkstra.getAllShortestPathsTo(nodes.get(2));
         System.out.println("AFTER2");
         for (Vertex vertex : path2) {
             System.out.println(vertex);
         }
 
-        LinkedList<Vertex> path3 = dijkstra.getPath(nodes.get(7));
+        LinkedList<Vertex> path3 = dijkstra.getAllShortestPathsTo(nodes.get(7));
         System.out.println("AFTER3");
         for (Vertex vertex : path3) {
             System.out.println(vertex);
         }
 
-        LinkedList<Vertex> path4 = dijkstra.getPath(nodes.get(8));
+        LinkedList<Vertex> path4 = dijkstra.getAllShortestPathsTo(nodes.get(8));
         System.out.println("AFTER4");
         for (Vertex vertex : path4) {
             System.out.println(vertex);
-        }
+        }*/
 
     }
 
